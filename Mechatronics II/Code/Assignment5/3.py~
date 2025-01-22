@@ -1,0 +1,18 @@
+"""
+
+"""
+import turtle as t # Imports Turtle
+t.speed(0) # Sets Turtle speed to max
+
+# This defines our nested 2D tuple
+draw = ((150, 90, 125,),
+        (100, -90, -75,),
+        (50, 90, 25,),
+        (-150, 90, -25,))
+
+for dist1, angle, dist2 in draw:
+    t.fd(dist1)
+    t.rt(angle)
+    t.fd(dist2)
+
+t.done()
