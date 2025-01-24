@@ -1,0 +1,44 @@
+import turtle as t
+import time
+
+draw = ((1,1,1,1),
+        (1,1,1,1),
+        (1,1,1,1))
+
+def circle(x, y, size, color):
+    t.teleport(x, y)
+    t.fillcolor(color)
+    t.begin_fill()
+    t.circle(size)
+    t.end_fill()
+
+def rectangle(x, y, size, color):
+    t.teleport(x, y)
+    t.fillcolor(color)
+    t.begin_fill()
+    for _ in range(4):
+        t.fd(size)
+        t.rt(90)
+    t.end_fill()
+    
+def star(x, y, size, color):
+    t.teleport(x, y)
+    t.fillcolor(color)
+    t.begin_fill()
+    for _ in range(5):
+        t.fd(size)
+        t.rt(144)
+    t.end_fill()
+    
+def triangle(x, y, size, color):
+    for _ in range(3):
+        t.fd(size)
+        t.rt(-120)
+
+def init():
+    t.teleport(0, 0)
+    t.setheading(0)
+
+init()
+triangle(0,0,100,"blue")
+time.sleep(3)
