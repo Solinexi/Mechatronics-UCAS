@@ -1,0 +1,55 @@
+"""
+
+"""
+
+import threading
+from tellopy import Tello
+from time import sleep
+
+pattern = ((70, -70, 0, 140, 0, 0, 60),
+           (-70, 70, 0, -140, 0, 0, 60))
+
+Height = 20
+Forward = 50
+
+def upflip(): # Defines our upflip function
+    drone.move_up(50)
+    sleep(1)
+    drone.flip("f")
+    sleep(1)
+    drone.move_down(100)
+            
+def shape(s,l):
+    for _ in range(s):
+        drone.move_forward(l)
+        drone.rotate_clockwise(round(360/s))
+                
+drone = Tello()
+
+drone.connect()
+sleep(1)
+
+drone.takeoff()
+sleep(1)
+
+drone.move_up(100)
+sleep(1)
+
+drone.keep_alive()
+
+upflip()
+sleep(1)
+
+drone.keep_alive()
+
+shape(3, Forward)
+sleep(1)
+
+drone.keep_alive()
+
+drone.flip("f")
+sleep(1)
+drone.flip("b")
+sleep(1)
+
+drone.land() # Tells drone to land

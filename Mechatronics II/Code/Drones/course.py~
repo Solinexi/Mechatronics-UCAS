@@ -1,0 +1,15 @@
+"""
+This program makes a DJI Tello takeoff and land.xs
+"""
+from djitellopy import Tello # Imports Tello library
+
+drone = Tello() # Creates a drone
+
+drone.connect() # Tells drone to connect
+drone.takeoff() # Tells drone to takeoff
+
+drone.move_right(300)
+drone.move_forward(325)
+drone.move_up(90)
+
+drone.land() # Tells drone to land

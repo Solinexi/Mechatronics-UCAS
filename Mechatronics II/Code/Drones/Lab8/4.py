@@ -1,0 +1,33 @@
+"""
+This program makes a DJI Tello takeoff run a sprial that goes up and down then land's
+"""
+
+from djitellopy import Tello # Imports Tello library
+
+Height = 20 # Our height incriment
+
+# Makes our circle pattern
+pattern = ((70, -70, 0, 140, 0, 0, 60),
+           (-70, 70, 0, -140, 0, 0, 60))
+
+drone = Tello() # Creates a drone
+
+drone.connect() # Tells drone to connect
+drone.takeoff() # Tells drone to takeoff
+
+def wind(): # Defines our wind function
+    for _ in range(6): # Runs loop 6 times
+        for x1, y1, z1, x2, y2, z2, speed in pattern: # For loop for drone pattern
+            drone.curve_xyz_speed(x1, y1, z1, x2, y2, (z2+Height), speed) # Runs curve command
+
+def unwind(): # Defines our unwind function
+    for _ in range(6): # Runs loop 6 times
+        for x1, y1, z1, x2, y2, z2, speed in pattern: # For loop for drone pattern
+            drone.curve_xyz_speed(x1, y1, z1, x2, y2, (z2-Height), speed) # Runs curve command
+
+wind() # Runs wind function
+unwind() # Runs unwind function
+        
+drone.rotate_clockwise(180) # Rotates drone to show we are done
+    
+drone.land() # Tells drone to land
