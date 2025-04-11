@@ -77,10 +77,18 @@ class Game():
         self.change_y = 0
 
         self.type = None
+        self.camera_x = 0
+        self.camera_y = 0
+        self.zoom = 1.0
+        self.camera_speed = 30
+        self.pan_x = 0
+        self.pan_y = 0
+        self.panning = False
 
 game = Game()
 
 '''Shape Classes'''
+
 class arc_object():
     def __init__(self, id, x1, y1, x2, y2, color, layer, surface):
         self.blockchain_id = id
@@ -193,9 +201,9 @@ class arc_object():
 
         # Update hitboxes
         self.hitbox = (self.x1 + self.x, self.y1 + self.y, self.x2 + self.x, self.y2 + self.y)
-        self.expansion_hitbox_1 = (self.x1 + self.x - 10, self.y1 + self.y - 10, 20, 20)
-        self.expansion_hitbox_2 = (self.x2 + self.x - 10, self.y2 + self.y - 10, 20, 20)
-        self.expansion_hitbox_3 = (self.x3 + self.x - 10, self.y3 + self.y - 10, 20, 20)
+        self.expansion_hitbox_1 = (self.x1 + self.x - 10 - game.camera_x, self.y1 + self.y - 10 - game.camera_y, 20, 20)
+        self.expansion_hitbox_2 = (self.x2 + self.x - 10 - game.camera_x, self.y2 + self.y - 10 - game.camera_y, 20, 20)
+        self.expansion_hitbox_3 = (self.x3 + self.x - 10 - game.camera_x, self.y3 + self.y - 10 - game.camera_y, 20, 20)
 
         if distance < threshold and self.can_lock:
             self.locked = True
@@ -205,8 +213,8 @@ class arc_object():
             self.x3 = self.mid_x_main
             self.y3 = self.mid_y_main
             pygame.draw.line(self.surface, self.color, 
-                             (self.x1 + self.x, self.y1 + self.y), 
-                             (self.x2 + self.x, self.y2 + self.y), 5)
+                             (self.x1 + self.x - game.camera_x, self.y1 + self.y - game.camera_y), 
+                             (self.x2 + self.x - game.camera_x, self.y2 + self.y - game.camera_y), 5)
         elif not self.can_lock or not (distance < threshold):
             self.locked = False
             try:
@@ -239,7 +247,8 @@ class arc_object():
 
                 # Construct Arc
                 pygame.draw.arc(self.surface, self.color, 
-                                    (self.x_I - self.radius, self.y_I - self.radius, self.radius * 2, self.radius * 2), 
+                                    (self.x_I - self.radius - game.camera_x, self.y_I - self.radius - game.camera_y, 
+                                    self.radius * 2, self.radius * 2), 
                                     self.start_angle, self.end_angle, 1)
             except ZeroDivisionError:
                 pass
@@ -249,8 +258,6 @@ class arc_object():
             pygame.draw.rect(self.surface, "yellow", self.expansion_hitbox_1, 2)
             pygame.draw.rect(self.surface, "yellow", self.expansion_hitbox_2, 2)
             pygame.draw.ellipse(self.surface, "yellow", self.expansion_hitbox_3, 2)
-
-        
 
 class ellipse_object():
     def __init__(self, id, x, y, width, height, color, layer, surface):
@@ -267,8 +274,8 @@ class ellipse_object():
         self.expansion_hitbox = (x + width / 2, y - (height / 2) - 20, 20, 20)
     
     def draw(self):
-        self.hitbox = (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height)
-        self.expansion_hitbox = (self.x + self.width / 2, self.y - (self.height / 2) - 20, 20, 20)
+        self.hitbox = (self.x - self.width / 2 - game.camera_x, self.y - self.height / 2 - game.camera_y, self.width, self.height)
+        self.expansion_hitbox = (self.x + self.width / 2 - game.camera_x, self.y - (self.height / 2) - 20 - game.camera_y, 20, 20)
         pygame.draw.ellipse(self.surface, self.color, self.hitbox)
         if game.type == "map_builder":
             pygame.draw.rect(self.surface, "yellow", self.expansion_hitbox, 2)
@@ -288,8 +295,8 @@ class rectangle_object():
         self.expansion_hitbox = (x + width / 2, y - (height / 2) - 20, 20, 20)
 
     def draw(self):
-        self.hitbox = (self.x - self.width / 2, self.y - self.height / 2, self.width, self.height)
-        self.expansion_hitbox = (self.x + self.width / 2, self.y - (self.height / 2) - 20, 20, 20)
+        self.hitbox = (self.x - self.width / 2 - game.camera_x, self.y - self.height / 2 - game.camera_y, self.width, self.height)
+        self.expansion_hitbox = (self.x + self.width / 2 - game.camera_x, self.y - (self.height / 2) - 20 - game.camera_y, 20, 20)
         pygame.draw.rect(self.surface, self.color, self.hitbox)
         if game.type == "map_builder":
             pygame.draw.rect(self.surface, "yellow", self.expansion_hitbox, 2)
@@ -702,9 +709,9 @@ def exit_action_popup():
     while showing and game.running:
         critical_events()
         main_screen_background()
+        draw_obstacles()
         main_screen_menu()
         get_user_inputs()
-        draw_obstacles()
         exit_popup.fill((200, 200, 200))  # Clear previous renders
         game.game_font.render_to(exit_popup, (10, 10), "Test", (0, 0, 0))  # Black text at position (50, 80)
         game.main_screen.blit(exit_popup, (exit_popup_x, exit_popup_y))
@@ -723,21 +730,37 @@ def critical_events():
         
 
 def main_screen_background():
-    if game.type == "map_builder":
-        '''Background and Grid lines for map builder type menu'''
-        game.main_screen.fill(game.background_color)
-        for i in range(game.newX + game.blueprint_spacing, game.main_screen_size_x + 1, game.blueprint_spacing):
-            pygame.draw.line(game.main_screen, game.accent_color, (i, 0), (i, game.main_screen_size_y))
-        for i in range(0, game.main_screen_size_y + 1, game.blueprint_spacing):
-            pygame.draw.line(game.main_screen, game.accent_color, (game.newX, i), (game.main_screen_size_x, i))
+    screen = game.main_screen
+    zoom = game.zoom
+    cam_x = game.camera_x
+    cam_y = game.camera_y
+    spacing = game.blueprint_spacing
 
-    elif game.type == "drone_flyer":
-        '''Background and Grid lines for drone flyer type menu'''
-        game.main_screen.fill(game.background_color)
-        for i in range(game.blueprint_spacing, game.main_screen_size_x + 1, game.blueprint_spacing):
-            pygame.draw.line(game.main_screen, game.accent_color, (i, 0), (i, game.main_screen_size_y))
-        for i in range(0, game.main_screen_size_y + 1, game.blueprint_spacing):
-            pygame.draw.line(game.main_screen, game.accent_color, (0, i), (game.main_screen_size_x, i))
+    screen.fill(game.background_color)
+
+    # Determine visible range in world coordinates
+    screen_width, screen_height = game.main_screen_size_x, game.main_screen_size_y
+    world_left = cam_x
+    world_right = cam_x + screen_width / zoom
+    world_top = cam_y
+    world_bottom = cam_y + screen_height / zoom
+
+    # Calculate grid line start positions aligned to the spacing
+    start_x = int(world_left // spacing) * spacing
+    end_x = int(world_right // spacing + 1) * spacing
+    start_y = int(world_top // spacing) * spacing
+    end_y = int(world_bottom // spacing + 1) * spacing
+
+    # Vertical grid lines
+    for x in range(start_x, end_x, spacing):
+        screen_x = int((x - cam_x) * zoom)
+        pygame.draw.line(screen, game.accent_color, (screen_x, 0), (screen_x, screen_height))
+
+    # Horizontal grid lines
+    for y in range(start_y, end_y, spacing):
+        screen_y = int((y - cam_y) * zoom)
+        pygame.draw.line(screen, game.accent_color, (0, screen_y), (screen_width, screen_y))
+
 
 def main_screen_menu():
     '''Menu'''
@@ -765,6 +788,7 @@ def snap_mode_correct(x_coord, y_coord):
 
 def get_user_inputs():
     '''Keyboard Input'''
+    dt = game.dt
     game.keys = pygame.key.get_pressed()
     if game.keys[pygame.K_x]:
         game.running = False
@@ -772,6 +796,15 @@ def get_user_inputs():
         game.snap_mode = True
     else:
         game.snap_mode = False
+
+    if game.keys[pygame.K_LEFT]:
+        game.camera_x -= game.camera_speed * dt
+    if game.keys[pygame.K_RIGHT]:
+        game.camera_x += game.camera_speed * dt
+    if game.keys[pygame.K_UP]:
+        game.camera_y -= game.camera_speed * dt
+    if game.keys[pygame.K_DOWN]:
+        game.camera_y += game.camera_speed * dt
 
     '''Mouse Calculations'''
     game.old_x = game.x_mouse
@@ -795,6 +828,14 @@ def get_user_inputs():
             game.change_y_count = 0
         else:
             game.change_y = 0
+
+    if (game.keys[pygame.K_LCTRL] or game.keys[pygame.K_RCTRL]) and game.left_click:
+        game.panning = True
+        game.camera_x -= game.change_x
+        game.camera_y -= game.change_y
+    else:
+        game.panning = False
+
 
 def draw_obstacles():
     '''Drawing Shapes'''
@@ -1042,6 +1083,7 @@ class Drone():
         if percent >= 0.95:
             move_angle = self.active_args
             self.animating_command = False
+            self.waiting = True
         else:
             move_angle = ang
         self.active_args -= ang
@@ -1053,9 +1095,11 @@ class Drone():
         initial_angle = self.rotation_angle
         # Gradually interpolate between the initial and target angle
         self.rotation_angle = (initial_angle + move_angle) % 360
-        self.waiting = True
 
-    def calculate_circumcircle(self, x1, y1, z1, x2, y2, z2):
+    @staticmethod
+    def calculate_circumcircle(x1, y1, z1, x2, y2, z2):
+        y1 = -y1
+        y2 = -y2
         #Direction vectors from Drone center at (0,0,0)
         D_ab = (x1, y1, z1)
         D_ac = (x2, y2, z2)
@@ -1090,6 +1134,7 @@ class Drone():
 
         #Bisectors intercept
         P_bi = (M_ab[0] + T_bi * D_bab[0], M_ab[1] + T_bi * D_bab[1], M_ab[2] + T_bi * D_bab[2])
+        P_bi = (P_bi[0], -P_bi[1], P_bi[2])  # Flip Y
 
         #Circumcircle radius
         R_cc = sqrt((P_bi[0] ** 2) + (P_bi[1] ** 2) + (P_bi[2] ** 2))
@@ -1097,12 +1142,14 @@ class Drone():
         #Scalar reference unit vector 1 (Orthagonal to N and SV2 on plane ABC, made with cross of N and (1,0,1))
         P_d1 = (N[1], -(N[0] - N[2]), -N[1])
         P_d1m = sqrt((P_d1[0] ** 2) + (P_d1[1] ** 2) + (P_d1[2] ** 2))
-        S_v1 = (P_d1[0] / P_d1m, P_d1[1]/ P_d1m, P_d1[2] / P_d1m)
+        S_v1 = (P_d1[0] / P_d1m, -P_d1[1] / P_d1m, P_d1[2] / P_d1m)
+
+
 
         #Scalar reference unit vector 2 (Orthagonal to N and SV1 on plane ABC, made with cross of N and (0,1,0))
         P_d2 = (-N[2], 0, N[0])
         P_d2m = sqrt((P_d2[0] ** 2) + (P_d2[1] ** 2) + (P_d2[2] ** 2))
-        S_v2 = (P_d2[0] / P_d2m, P_d2[1]/ P_d2m, P_d2[2] / P_d2m)
+        S_v2 = (P_d2[0] / P_d2m, -P_d2[1] / P_d2m, P_d2[2] / P_d2m)
 
         #Parametric circumcircle graphed by C_{x,y,z >> i}(t)-> (P_bi)[i] + R_cc * ((S_v1)[i] * cos(t) + (S_v2)[i] * sin(t))
         
@@ -1110,6 +1157,7 @@ class Drone():
         """Compute t range such that the circumcircular arc starts at the drone (0,0,0),
         and ends with the farthest point B or C such that all three points are passed through"""
 
+        @staticmethod
         def get_t(point):
             rel = (np.array(point) - np.array((P_bi[0], P_bi[1], P_bi[2]))) / R_cc
             a = np.dot(rel, np.array((S_v1[0], S_v1[1], S_v1[2])))
@@ -1125,68 +1173,80 @@ class Drone():
         deltas = (t_candidates - t0) % (2 * np.pi)
         t_end = t0 + np.max(deltas)
 
+        print("Arc start local:", P_bi[0] + R_cc * (S_v1[0] * cos(0) + S_v2[0] * sin(0)), P_bi[1] + R_cc * (S_v1[1] * cos(0) + S_v2[1] * sin(0)))
+
         return t0, t_end, t0, t1, t2, P_bi, R_cc, S_v1, S_v2
 
-    def _follow_arc(self, x1, y1, z1, x2, y2, z2):
+    def _curve(self, x1, y1, z1, x2, y2, z2):
         speed = 150  # cm/s
         dt = game.dt
-        t = self.active_args[0]
-        TWO_PI = 2 * pi
+        current_t = self.active_args[0]
 
-        # The drone's world position when the arc begins
-        cx, cy = self.center_coordinates
+        if not hasattr(self, 'arc_anchor'):
+            self.arc_anchor = self.center_coordinates
+        anchor_x, anchor_y = self.arc_anchor
 
-        # Calculate and store arc data if not yet calculated
         if len(self.active_args) < 3:
-            t0, t_end, _, _, _, center, radius, sv1, sv2 = self.calculate_circumcircle(
-                x1, y1, z1, x2, y2, z2
-            )
+            result = self.calculate_circumcircle(x1, y1, z1, x2, y2, z2)
             self.active_args = list(self.active_args)
-            self.active_args.append((center, radius, sv1, sv2, t_end))
+            self.active_args.append((result[5], result[6], result[7], result[8], result[1], result[0]))
+            current_t = result[0]
+            self.active_args[0] = current_t
 
+        center, radius, sv1, sv2, t_end, t0_value = self.active_args[2]
 
-        # Unpack stored arc data
-        center, radius, sv1, sv2, t_end = self.active_args[2]
+        # ✅ Compute how much to increment t based on arc speed
+        arc_dist = speed * dt
+        delta_t = arc_dist / radius
+        next_t = current_t + delta_t
 
-        # Local arc position (relative to drone at origin)
-        lx = center[0] + radius * (sv1[0] * cos(t) + sv2[0] * sin(t))
-        ly = center[1] + radius * (sv1[1] * cos(t) + sv2[1] * sin(t))
+        if next_t > t_end:
+            next_t = t_end
 
-        # Translate to world coordinates (apply arc relative to real position)
-        wx = cx + lx
-        wy = cy + ly
+        lx = center[0] + radius * (sv1[0] * cos(next_t) + sv2[0] * sin(next_t))
+        ly = center[1] + radius * (sv1[1] * cos(next_t) + sv2[1] * sin(next_t))
+        wx = anchor_x + lx
+        wy = anchor_y + ly
 
-        # Update drone position along the arc
-        if t < t_end:
-            self.center_coordinates = (wx, wy)
-            self.active_args[0] += dt
-        else:
+        self.center_coordinates = (wx, wy)
+        self.active_args[0] = next_t
+
+        if next_t >= t_end:
+            del self.arc_anchor
             self.animating_command = False
             self.waiting = True
 
-
-    def arc_path(self, t, cx, cy, cz, sv1x, sv1y, sv1z, sv2x, sv2y, sv2z, radius):
+    def _backward(self, distance):
         """
-        Returns a point (x, y, z) on a 3D arc at parameter t.
-
-        Parameters:
-            t       — arc parameter (angle in radians)
-            cx, cy, cz — center of circle
-            sv1     — first basis vector (scaled by cos(t))
-            sv2     — second basis vector (scaled by sin(t))
-            radius  — radius of the arc
-
-        Returns:
-            (x, y, z) — position on arc at angle t
+        Move the drone forward by the specified distance in the direction it is facing.
+        :param distance: The distance to move.
         """
-        x = cx + radius * (sv1x * cos(t) + sv2x * sin(t))
-        y = cy + radius * (sv1y * cos(t) + sv2y * sin(t))
-        z = cz + radius * (sv1z * cos(t) + sv2z * sin(t))
-        
-        return x, y
+        speed = 150 #cm/s
+        dt = game.dt
 
+        est_time = distance / speed
+        percent = dt / est_time
+        dist = percent * distance
+        if percent >= 0.95:
+            move_dist = -self.active_args
+            self.animating_command = False
+        else:
+            move_dist = -dist
+        self.active_args -= dist
+        # Convert the rotation angle to radians
+        angle_radians = radians(self.rotation_angle)  # Invert the angle to match Pygame's coordinates
 
+        # Calculate the movement vector
+        dx = move_dist * cos(angle_radians)
+        dy = move_dist * sin(angle_radians)
 
+        # Update the drone's position
+        new_x = self.center_coordinates[0] + dx
+        new_y = self.center_coordinates[1] + dy  # Add dy since Pygame's y-axis increases downward
+
+        # Set the new coordinates
+        self.center_coordinates = (new_x, new_y)
+        self.waiting = True
 
     def _forward(self, distance):
         """
@@ -1219,6 +1279,70 @@ class Drone():
         # Set the new coordinates
         self.center_coordinates = (new_x, new_y)
         self.waiting = True
+
+    def _right(self, distance):
+        """
+        Move the drone Right by the specified distance.
+        :param distance: The distance to move.
+        """
+        speed = 150 #cm/s
+        dt = game.dt
+
+        est_time = distance / speed
+        percent = dt / est_time
+        dist = percent * distance
+        if percent >= 0.95:
+            move_dist = self.active_args
+            self.animating_command = False
+        else:
+            move_dist = dist
+        self.active_args -= dist
+        # Convert the rotation angle to radians
+        angle_radians = radians(self.rotation_angle + 90)  # Invert the angle to match Pygame's coordinates
+
+        # Calculate the movement vector
+        dx = move_dist * cos(angle_radians)
+        dy = move_dist * sin(angle_radians)
+
+        # Update the drone's position
+        new_x = self.center_coordinates[0] + dx
+        new_y = self.center_coordinates[1] + dy  # Add dy since Pygame's y-axis increases downward
+
+        # Set the new coordinates
+        self.center_coordinates = (new_x, new_y)
+        self.waiting = True
+
+    def _left(self, distance):
+        """
+        Move the drone Left by the specified distance.
+        :param distance: The distance to move.
+        """
+        speed = 150 #cm/s
+        dt = game.dt
+
+        est_time = distance / speed
+        percent = dt / est_time
+        dist = percent * distance
+        if percent >= 0.95:
+            move_dist = self.active_args
+            self.animating_command = False
+        else:
+            move_dist = dist
+        self.active_args -= dist
+        # Convert the rotation angle to radians
+        angle_radians = radians(self.rotation_angle - 90)  # Invert the angle to match Pygame's coordinates
+
+        # Calculate the movement vector
+        dx = move_dist * cos(angle_radians)
+        dy = move_dist * sin(angle_radians)
+
+        # Update the drone's position
+        new_x = self.center_coordinates[0] + dx
+        new_y = self.center_coordinates[1] + dy  # Add dy since Pygame's y-axis increases downward
+
+        # Set the new coordinates
+        self.center_coordinates = (new_x, new_y)
+        self.waiting = True
     
     def _land(self):
         print("Landed")
@@ -1232,6 +1356,7 @@ class Drone():
         dist = percent * distance
         
         if percent >= 0.95:
+            print("EE")
             move_dist = self.active_args
             self.animating_command = False
         else:
@@ -1254,6 +1379,7 @@ class Drone():
         percent = dt / est_time
         dist = percent * distance
         if percent >= 0.95:
+            print("EE")
             move_dist = self.active_args
             self.animating_command = False
         else:
@@ -1303,6 +1429,15 @@ class Drone():
         t = 0
         self.command_queue.append(("curve", (t, (x1, y1, z1, x2, y2, z2))))
 
+    def backward(self, distance):
+        self.command_queue.append(("backward", distance))
+
+    def right(self, distance):
+        self.command_queue.append(("right", distance))
+
+    def left(self, distance):
+        self.command_queue.append(("left", distance))
+
     # New: Execute the next command in the queue
     def execute_next_command(self):
         """Execute the next queued command, if any."""            
@@ -1322,7 +1457,13 @@ class Drone():
             elif self.active_command == "down":
                 self._down(self.active_args)
             elif self.active_command == "curve":
-               self._follow_arc(*self.active_args[1])
+               self._curve(*self.active_args[1])
+            elif self.active_command == "backward":
+                self._backward(self.active_args)
+            elif self.active_command == "right":
+                self._right(self.active_args)
+            elif self.active_command == "left":
+                self._left(self.active_args)
         
         else:
             if self.waiting:
@@ -1338,15 +1479,16 @@ class Drone():
     
     # Start Sim
     def launch(self):
-        fly_drone(self, self.obstacle_map)
+        drone_flyer(self, self.obstacle_map)
 
     def draw(self):
         if self.executing_commands:
             self.execute_next_command()
         """ Draw the drone centered on its coordinates """
         # Rotate the image based on the current angle
+        coordinate = (self.center_coordinates[0] - game.camera_x, self.center_coordinates[1] - game.camera_y)
         rotated_image = pygame.transform.rotate(self.icon_final, -self.rotation_angle)  
-        rect = rotated_image.get_rect(center=self.center_coordinates)
+        rect = rotated_image.get_rect(center = coordinate)
         self.screen.blit(rotated_image, rect)
 
 speed = 160000
@@ -1370,9 +1512,9 @@ def map_maker():
     while game.running:  
         critical_events()
         main_screen_background()
+        draw_obstacles()
         main_screen_menu()
         get_user_inputs()
-        draw_obstacles()
         
         if spup.execute:
             spup.draw()
@@ -1520,34 +1662,6 @@ def map_maker():
                                     mouse_lock = (False, None, None, None, 0, 0)
                                     game.altering_point_3 = False
                                     game.expanding = False
-
-                    if game.moving:
-                        left_x = min(shape.expansion_hitbox_1[0], shape.expansion_hitbox_2[0])
-                        top_y = min(shape.expansion_hitbox_1[1], shape.expansion_hitbox_2[1])
-                        width = abs(shape.expansion_hitbox_1[0] - shape.expansion_hitbox_2[0]) + 20
-                        height = abs(shape.expansion_hitbox_1[1] - shape.expansion_hitbox_2[1]) + 20
-                        hit = hitborder((left_x, top_y, width, height))
-                        if hit[2]:
-                            shape.x += hit[0]
-                            shape.y += hit[1]
-                    else:
-                        hit_1 = hitborder(shape.expansion_hitbox_1)
-                        hit_2 = hitborder(shape.expansion_hitbox_2)
-                        hit_3 = hitborder(shape.expansion_hitbox_3)
-                        if hit_1[2]:
-                            shape.x1 += hit_1[0]
-                            shape.y1 += hit_1[1]
-                        if hit_2[2]:
-                            shape.x2 += hit_2[0]
-                            shape.y2 += hit_2[1]
-                        if hit_3[2]:
-                            shape.x3 += hit_3[0]
-                            shape.y3 += hit_3[1]
-                        
-                        if game.snap_mode:
-                            shape.x1, shape.y1 = snap_mode_correct(shape.x1, shape.y1)
-                            shape.x2, shape.y2 = snap_mode_correct(shape.x2, shape.y2)
-
                 else:
                     if(hitbox(shape.expansion_hitbox, game.mouse_hitbox) or game.expanding) and not (game.moving or game.altering_point_1 or game.altering_point_2) and game.mouse_layer == shape.layer:
                         if game.left_click:
@@ -1576,30 +1690,6 @@ def map_maker():
                             game.shape_lock = (False, None, None)
                             game.mouse_lock = (False, None, None, None, 0, 0)
                             game.expanding = False
-                    
-                    if game.moving:
-                        left_x = shape.hitbox[0]
-                        top_y = shape.hitbox[1] - 20
-                        width = shape.hitbox[2] + 20
-                        height = shape.hitbox[3] + 20
-                        hit = hitborder((left_x, top_y, width, height))
-                        if hit[2]:
-                            shape.x += hit[0]
-                            shape.y += hit[1]
-                    else:
-                        hit = hitborder(shape.expansion_hitbox)
-                        if hit[2]:
-                            shape.x += hit[0] / 2
-                            shape.width += hit[0]
-                            shape.y += hit[1] / 2
-                            shape.height -= hit[1]
-                        
-                        if game.snap_mode:
-                            result = snap_mode_correct(shape.expansion_hitbox[0], shape.expansion_hitbox[1])
-                            shape.width += result[0] - shape.expansion_hitbox[0]
-                            shape.x += (result[0] - shape.expansion_hitbox[0]) / 2
-                            shape.height += result[1] - shape.expansion_hitbox[1]
-                            shape.y += (result[1] - shape.expansion_hitbox[1]) / 2
 
                 """Move Shape Centers"""
                 if shape.type == 'arc' and shape.locked:
@@ -1643,7 +1733,7 @@ def map_maker():
         gametime_runner()
     simulator_exit()
 
-def fly_drone(drone, map):
+def drone_flyer(drone, map):
     game.type = "drone_flyer"
     fly_course_name = f"{map}.csv"
     game.current_file = f"Mechatronics II/Drone Course Simulator/Saved Maps/{fly_course_name}"
