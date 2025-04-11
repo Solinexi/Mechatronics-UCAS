@@ -7,6 +7,7 @@ from random import randint
 import numpy as np
 pygame.init()
 
+
 class Game():
     def __init__(self):
         '''Start Variables'''
@@ -810,7 +811,7 @@ def gametime_runner():
         game.can_select = True
 
     pygame.display.flip()
-    game.dt = game.clock.tick() / 1000
+    game.dt = game.clock.tick(60) / 1000
     game.times_averaged += 1
     if game.times_averaged == 0:
         game.average_fps = game.clock.get_fps()
